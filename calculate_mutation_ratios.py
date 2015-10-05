@@ -20,11 +20,10 @@ def readScaffoldData(fn, delimiter=' '):
                 homHetRatios[(row[1], row[2])] = {'hom': 0.0, 'het': 0.0}
     return scaffoldData, homHetRatios
 
-def readMutationData(fn, scaffoldData, homHetRatios, delimiter=' '):
+def readMutationData(fn, scaffoldData, delimiter=' '):
     """
-    Reads mutation data, counts the number of hom/het mutations per bin, and
-    calculates het/hom ratio. The hom/het counts are stored in another dictonary per bin
-    such that we can directly count the number of occurrences of "het" and "hom".
+    Provides a generator to the mutation data, i.e. to each row in the input file fn
+    that has data in scaffoldData.
     """
     with open(fn) as fi:
         reader = csv.reader(fi, delimiter=delimiter, quotechar='"')
@@ -33,7 +32,18 @@ def readMutationData(fn, scaffoldData, homHetRatios, delimiter=' '):
                 chrBin = scaffoldData.get(row[0], None)
                 if chrBin is not None:
                     assert row[7] in ('hom', 'het'), row[7]
-                    homHetRatios[chrBin][row[7]] += 1
+                    yield chrBin, row
+
+
+
+def processMutationData(fn, scaffoldData, homHetRatios, delimiter=' '):
+    """
+    Counts the number of hom/het mutations per bin, and
+    calculates het/hom ratio. The hom/het counts are stored in another dictonary per bin
+    such that we can directly count the number of occurrences of "het" and "hom".
+    """
+    for chrBin, row in readMutationData(fn, scaffoldData, delimiter=delimiter):
+        homHetRatios[chrBin][row[7]] += 1
 
     # Finished reading data, now calculate ratios.
     for chrBin in homHetRatios:
@@ -48,16 +58,20 @@ def readMutationData(fn, scaffoldData, homHetRatios, delimiter=' '):
     return homHetRatios
 
 
-
-
-
 def main():
-    scaffoldData, homHetRatios = readScaffoldData(sys.argv[1])
-    homHetRatios = readMutationData(sys.argv[2], scaffoldData, homHetRatios)
+    scaffoldData, homHetRatios = readScaffoldData(sys.argv[1], delimiter=',')
 
+    # print each row with data in scaffoldData
+    for chrBin, row in readMutationData(sys.argv[2], scaffoldData, delimiter=','):
+        out = [row[0], chrBin[0], chrBin[1], chrBin[1], row[7], 2 if row[7] == 'het' else 1]
+        print '\t'.join(map(str, out))
+    pass
+
+    # original
+    # homHetRatios = readMutationData(sys.argv[2], scaffoldData, homHetRatios)
     # for each bin: output chromosome, bin, hom, het, ratio
-    for chrBin in sorted(homHetRatios):
-        print '\t'.join(map(str, list(chrBin) + homHetRatios[chrBin]))
+    # for chrBin in sorted(homHetRatios):
+    # print '\t'.join(map(str, list(chrBin) + homHetRatios[chrBin]))
 
 
 
